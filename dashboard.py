@@ -4,6 +4,7 @@ import requests
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import os
 
 from datetime import datetime, timezone
 from html import escape
@@ -13,7 +14,10 @@ from html import escape
 # ADVANCED SECURITY OPERATIONS CENTER
 # ==========================================
 
-API_URL = "http://127.0.0.1:8000"
+API_URL = os.getenv(
+    "NEXUS_API_URL",
+    "http://127.0.0.1:8000"
+).rstrip("/")
 
 st.set_page_config(
     page_title="NEXUS GUARD AI | SOC",
@@ -231,7 +235,7 @@ with st.sidebar:
 
     st.divider()
     st.markdown("### SYSTEM INFORMATION")
-    st.caption("Backend: 127.0.0.1:8000")
+    st.caption(f"Backend: {API_URL}")
     st.caption("Refresh: Every 5 seconds")
     st.caption("Version: FINAL")
     st.caption("Environment: Local prototype")
