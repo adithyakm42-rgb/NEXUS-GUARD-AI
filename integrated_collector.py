@@ -6,6 +6,7 @@ import time
 import socket
 import json
 import requests
+import os
 
 from datetime import datetime, timezone
 from privacy_engine import prepare_secure_payload
@@ -17,7 +18,10 @@ from privacy_engine import prepare_secure_payload
 MODEL_FILE = "nexus_model_real.pkl"
 OUTPUT_FILE = "approved_payloads.jsonl"
 COLLECTOR_ID = "collector-001"
-API_URL = "http://127.0.0.1:8000/ingest"
+API_URL = os.getenv(
+    "NEXUS_API_URL",
+    "http://127.0.0.1:8000"
+).rstrip("/") + "/ingest"
 INTERVAL = 5
 
 print("\n==========================================")

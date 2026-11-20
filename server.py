@@ -1,9 +1,11 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header, Depends
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from typing import Literal
 from datetime import datetime, timezone
 import sqlite3
 import json
+import os
+import secrets
 
 from alert_engine import evaluate_alerts
 
@@ -13,12 +15,30 @@ from alert_engine import evaluate_alerts
 # ==========================================
 
 DB_FILE = "nexus_guard.db"
+NEXUS_WRITE_API_KEY = os.getenv("NEXUS_WRITE_API_KEY", "")
 
 app = FastAPI(
     title="NEXUS GUARD AI",
     description="AIOps Telemetry, Persistent Alerts, and Alert Intelligence API",
     version="FINAL"
 )
+
+
+def verify_api_key(
+    x_api_key: str = Header(default="", alias="X-API-Key")
+):
+    """Require the configured API key for telemetry and alert mutations."""
+    if not NEXUS_WRITE_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="API authentication is not configured"
+        )
+
+    if not secrets.compare_digest(x_api_key, NEXUS_WRITE_API_KEY):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid API key"
+        )
 
 
 # ==========================================
@@ -260,7 +280,10 @@ def health():
 # ==========================================
 
 @app.post("/ingest")
-def ingest_telemetry(data: Telemetry):
+def ingest_telemetry(
+    data: Telemetry,
+    _: None = Depends(verify_api_key)
+):
     payload = data.model_dump(mode="json")
 
     try:
@@ -399,7 +422,10 @@ def alert_summary():
 # ==========================================
 
 @app.post("/alerts/{alert_id}/acknowledge")
-def acknowledge_alert(alert_id: int):
+def acknowledge_alert(
+    alert_id: int,
+    _: None = Depends(verify_api_key)
+):
     with sqlite3.connect(DB_FILE) as connection:
         cursor = connection.execute("""
             UPDATE alerts
@@ -432,7 +458,10 @@ def acknowledge_alert(alert_id: int):
 # ==========================================
 
 @app.post("/alerts/{alert_id}/resolve")
-def resolve_alert(alert_id: int):
+def resolve_alert(
+    alert_id: int,
+    _: None = Depends(verify_api_key)
+):
     with sqlite3.connect(DB_FILE) as connection:
         cursor = connection.execute("""
             UPDATE alerts
