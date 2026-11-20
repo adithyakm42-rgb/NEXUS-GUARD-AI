@@ -1,0 +1,12 @@
+.venv/
+.venv-1/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+*.db
+*.sqlite
+*.sqlite3
+*.jsonl
+.streamlit/secrets.toml
