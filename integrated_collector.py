@@ -18,16 +18,25 @@ from privacy_engine import prepare_secure_payload
 MODEL_FILE = "nexus_model_real.pkl"
 OUTPUT_FILE = "approved_payloads.jsonl"
 COLLECTOR_ID = "collector-001"
+
 API_URL = os.getenv(
     "NEXUS_API_URL",
     "http://127.0.0.1:8000"
 ).rstrip("/") + "/ingest"
+
+API_KEY = os.getenv("NEXUS_WRITE_API_KEY", "")
 INTERVAL = 5
 
 print("\n==========================================")
 print("          NEXUS GUARD AI")
 print("       LIVE COLLECTOR V2.0")
 print("==========================================")
+
+# Require API key before starting
+if not API_KEY:
+    raise RuntimeError(
+        "NEXUS_WRITE_API_KEY is missing. Configure it before starting."
+    )
 
 # 1. Load trained AI model
 bundle = joblib.load(MODEL_FILE)
@@ -41,6 +50,7 @@ previous_time = time.monotonic()
 print("\nAI model loaded successfully.")
 print("Privacy Engine connected.")
 print("API endpoint configured.")
+print("API authentication configured.")
 print("Live monitoring started.")
 print("\nPress CTRL+C to stop.\n")
 
@@ -58,7 +68,7 @@ try:
             current_network = psutil.net_io_counters()
             current_time = time.monotonic()
 
-            elapsed = current_time - previous_time
+            elapsed = max(current_time - previous_time, 0.001)
 
             upload = (
                 (current_network.bytes_sent - previous_network.bytes_sent)
@@ -99,8 +109,6 @@ try:
                 "status": status,
                 "event_category": "SYSTEM_HEALTH",
                 "severity": severity,
-
-                # These fields must remain local
                 "hostname": socket.gethostname(),
                 "anomaly_score": round(float(score), 4)
             }
@@ -114,12 +122,13 @@ try:
                 output.write(json.dumps(safe_payload) + "\n")
                 output.flush()
 
-                # 9. Send ONLY privacy-approved payload
+                # 9. Send privacy-approved payload with API authentication
                 try:
                     response = requests.post(
                         API_URL,
                         json=safe_payload,
-                        timeout=3
+                        headers={"X-API-Key": API_KEY},
+                        timeout=10
                     )
 
                     response.raise_for_status()
@@ -135,7 +144,7 @@ try:
                     print(f"ANOMALY SCORE: {score:.4f}")
                     print("PRIVACY: VALIDATED")
                     print("LOCAL PAYLOAD: SAVED")
-                    print(f"API RESPONSE: {result['status']}")
+                    print(f"API RESPONSE: {result.get('status', 'UNKNOWN')}")
 
                 except requests.RequestException as error:
                     print("------------------------------------------")
