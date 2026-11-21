@@ -23,7 +23,7 @@ try:
 
         current_network = psutil.net_io_counters()
         current_time = time.monotonic()
-        elapsed = current_time - previous_time
+        elapsed = max(current_time - previous_time, 0.001)
 
         upload = (
             (current_network.bytes_sent - previous_network.bytes_sent)
@@ -53,6 +53,18 @@ try:
 
         status = "NORMAL" if prediction == 1 else "ANOMALY"
 
+        # System health warnings
+        health_warnings = []
+
+        if cpu > 90:
+            health_warnings.append("HIGH CPU USAGE")
+
+        if memory > 85:
+            health_warnings.append("HIGH RAM USAGE")
+
+        if disk > 85:
+            health_warnings.append("HIGH DISK USAGE")
+
         print("\n--------------------------------")
         print(f"CPU: {cpu:.2f}%")
         print(f"RAM: {memory:.2f}%")
@@ -64,6 +76,12 @@ try:
 
         if prediction == -1:
             print("WARNING: Unusual activity detected!")
+
+        if health_warnings:
+            for warning in health_warnings:
+                print("SYSTEM HEALTH WARNING:", warning)
+        else:
+            print("SYSTEM HEALTH: GOOD")
 
         previous_network = current_network
         previous_time = current_time
